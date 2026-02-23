@@ -18,7 +18,7 @@ These apply to every interaction:
 3. Skip files already processed (e.g., don't re-convert existing PDFs, don't re-download existing data).
 4. Test scripts with a small subset before running on a full directory.
 5. Keep things simple and practical. Prefer direct action over long explanations.
-6. Save research reports as .docx to ~/Documents/ or user-specified directory. Use parallel Task agents for comprehensive research.
+6. Save research reports as .docx to ~/Documents/Research/<topic-folder>/ or user-specified directory. Use parallel Task agents for comprehensive research.
 
 ## Output Style
 
@@ -28,6 +28,39 @@ These apply to every interaction:
 - Practical recommendations over abstract theory
 - Act as a thought partner, not just a writing assistant
 - Strong opinions are welcome if grounded in reasoning
+
+## File Organization
+
+- When organizing files, use keyword-based categories by default, NOT fiscal year sorting, unless explicitly requested.
+- Fiscal year = July through June (for school files when requested).
+- Always confirm the target directory and organizational scheme before moving files.
+- Verify correct OneDrive root path before operations.
+- When working with OneDrive/iCloud/Google Drive, note that cloud-synced folders may have access limitations.
+
+## Research Reports
+
+- Default save location: `~/Documents/Research/<topic-folder>/` (lowercase-hyphen folder names)
+- All research reports saved as .docx format.
+- `/research` — education-focused, 6-agent deep dive with TN-specific data
+- `/general-research` — general topics, lighter-weight single report
+- Both skills save to the same `~/Documents/Research/` base directory.
+- `~/Documents/Research/scripts/` holds Python generation scripts (kept separate from reports).
+- Use parallel research agents (Task tool) for comprehensive reports.
+- Include source counts and Tennessee-specific context when relevant to education topics.
+- Do not re-do work that a running agent has already been told to handle.
+
+## macOS Compatibility
+
+- This is a macOS environment. Use zsh (not bash) for shell scripts — macOS bash is outdated and lacks features like associative arrays.
+- Be cautious with AppleScript automation — dialog boxes and permissions can block execution.
+- Port 5000 is often taken by AirPlay on macOS; use alternative ports for local servers.
+- This is a work computer — do NOT suggest enabling SSH/Remote Login or other changes that could violate IT policies.
+
+## Daily Automation Scripts
+
+- User has an existing daily_workflow master orchestration script. New automations should be integrated INTO this file rather than created as separate scripts.
+- Always check for existing scripts that handle similar logic before creating new ones.
+- Use launchd (not cron) for scheduling on macOS.
 
 ## Shell and Scripting
 
@@ -43,11 +76,13 @@ Before any push/pull, verify all three: (1) repo is initialized, (2) remote is c
 
 This is a work computer. Do not enable SSH or Remote Login. Use Tailscale for remote access if needed.
 
-## Browser Automation
+## Browser Automation & MCP
 
-Puppeteer MCP is configured on this Mac. Use it for website interactions including PowerSchool, Squarespace, and other web apps. Do not tell the user browser control is impossible.
+Puppeteer MCP is configured on this Mac. Use it for website interactions including PowerSchool, Squarespace, and other web apps. When the user asks to control a browser or interact with web UIs, use the Puppeteer MCP — do NOT say browser control is impossible.
 
-Implement robust error handling for disconnections and include reconnection logic. Test login flows step-by-step before full automation.
+For sites requiring login (PowerSchool, Squarespace), expect authentication challenges and plan for them upfront. Test login flows step-by-step before full automation.
+
+Implement robust error handling for disconnections and include reconnection logic.
 
 Google Drive files cannot be accessed via API without credentials; ask the user to download/export manually if needed.
 
@@ -88,13 +123,6 @@ Apply this context automatically when working in these areas:
 - Merge multiple PDFs into single documents
 - Organize contracts and MOUs into Legal/
 
-### File Organization
-
-- Default: keyword-based categories, NOT fiscal year sorting (unless explicitly requested)
-- Fiscal year = July through June (for school files when requested)
-- Confirm target directory and organizational scheme before moving files
-- Verify correct OneDrive root path before operations
-
 ## Common Task Patterns
 
 1. Organize messy folders by type, date, or topic
@@ -118,6 +146,7 @@ Apply this context automatically when working in these areas:
 
 ```
 ~/Documents/                              # General documents
+~/Documents/Research/                     # All research reports, organized by topic subfolder
 ~/Downloads/                              # Regular cleanup via organize_downloads.sh
 ~/Scripts/                                # Automation scripts
 
