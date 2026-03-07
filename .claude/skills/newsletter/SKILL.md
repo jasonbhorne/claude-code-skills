@@ -26,11 +26,21 @@ Generate a complete GCS AI Newsletter issue.
    - Each non-blank, non-comment line is a URL that MUST appear in this issue.
    - Visit each link to determine its type (article, video, tool, podcast) and place it in the appropriate section.
 
-## Step 2: Find Fresh Content
+## Step 2: Find Fresh Content (3-Agent Team)
 
-- Use web search to find **8+ current articles** about AI in K-12 education from the past 30 days.
-- Cross-check every article URL and title against the archive. If it has already been shared, find a replacement.
-- Verify all links work before including them.
+Use agent teams to discover content in parallel:
+
+### Team Setup
+
+1. **Create the team**: `TeamCreate` with `team_name: "newsletter-<month>"` (e.g., `newsletter-march-2026`).
+2. **Create 3 tasks** via `TaskCreate`:
+   - **Article search**: Find 8+ current articles about AI in K-12 education from the past 30 days
+   - **Media search**: Find 1-2 AI education podcasts, 1-2 new AI tools for educators, and any video resources
+   - **Must-include research**: Visit each must-include link, determine its type (article, video, tool, podcast), and write a summary for placement
+3. **Spawn 3 teammates** via `Agent` tool with `team_name`, names: `article-finder`, `media-finder`, `link-researcher`. Launch all in a single message. Use `subagent_type: "general-purpose"`.
+4. **Pass the archive data** to each agent so they can cross-check. Every URL and title must be checked against the archive. If already shared, find a replacement.
+5. **Monitor via `TaskList`**. When all 3 complete, collect results, verify all links work, and proceed to Step 3.
+6. **Shut down teammates** and `TeamDelete` after newsletter generation is complete (Step 7).
 
 ## Step 3: Generate the Newsletter
 
