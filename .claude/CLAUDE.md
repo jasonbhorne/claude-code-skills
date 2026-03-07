@@ -55,16 +55,11 @@ Puppeteer MCP is configured for browser automation (PowerSchool, Squarespace, et
 
 ## Key Directories
 
-```
-~/Documents/                              # General documents
-~/Documents/Research/                     # Research reports by topic subfolder
-~/Downloads/                              # Cleanup via organize_downloads.sh
-~/Scripts/                                # Automation scripts
-~/OneDrive-GreenevilleCitySchools/        # (alias: OneDrive-GCS)
-~/OneDrive-EastTennesseeStateUniversity/  # Personal/Medical/
-```
+See `.claude/rules/directories.md` for the full OneDrive tree.
 
-Full OneDrive directory tree: see `.claude/rules/directories.md`
+- `~/Documents/Research/<topic>/` — research reports as .docx
+- `~/Downloads/` — auto-sorted by `organize_downloads.sh`
+- `~/Scripts/` — automation scripts
 
 ## Excluded Paths
 
