@@ -25,6 +25,14 @@ These skills extend Claude Code with specialized capabilities through `SKILL.md`
 | [notebooklm](skills/notebooklm/) | Full programmatic access to Google NotebookLM via CLI. Create notebooks, add sources, generate podcasts, slide decks, quizzes, and more |
 | [notebooklm-pipeline](skills/notebooklm-pipeline/) | Automated NotebookLM pipeline: create notebook, add sources, then generate podcast + report + quiz + slides in parallel |
 
+### Research & Analysis
+
+| Skill | Description |
+|-------|-------------|
+| [deep-research](skills/deep-research/) | Comprehensive source-verified research using 4 parallel agents (gov, news, academic, industry), cross-referencing, URL verification, and confidence scoring |
+| [fact-check](skills/fact-check/) | Fact-check a .docx file for internal consistency, unsourced claims, citation integrity, logical coherence, plausibility, and stale references. Produces annotated Word comments and a summary report |
+| [bill-tracker](skills/bill-tracker/) | Track Tennessee education legislation from the TN Legislature website with categorized impact assessment and Excel tracking spreadsheets |
+
 ### Productivity & Operations
 
 | Skill | Description |
@@ -34,6 +42,7 @@ These skills extend Claude Code with specialized capabilities through `SKILL.md`
 | [weekly-ops](skills/weekly-ops/) | Autonomously run recurring workflows based on the current date, pass context between tasks, and produce a Weekly Briefing document |
 | [organize-folder](skills/organize-folder/) | Create a folder organizer script and clickable `.command` file for any directory |
 | [financial-advisor](skills/financial-advisor/) | Monthly personal financial analysis with XLSX dashboard and DOCX narrative report using 4 parallel agents |
+| [shopping](skills/shopping/) | Personal shopping assistant with size/brand memory, multi-retailer search, price comparison, and composite ranking |
 
 ### Calendar & Scheduling
 
@@ -86,6 +95,8 @@ These skills demonstrate several reusable Claude Code patterns:
 - **CLI tool integration** with `notebooklm-py` for NotebookLM automation
 - **Shared context files** for multi-task orchestration (weekly-ops)
 - **Skill-as-meta-skill** where one skill autonomously creates other skills (create-skill)
+- **Web research pipelines** with parallel WebSearch/WebFetch for source gathering and product comparison (deep-research, shopping, bill-tracker)
+- **Source verification** with confidence scoring and cross-referencing across multiple source categories (deep-research)
 
 ## Requirements
 
