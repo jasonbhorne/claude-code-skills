@@ -21,6 +21,7 @@ These skills extend Claude Code with specialized capabilities through `SKILL.md`
 | [pptx](skills/pptx/) | Generate a professional PowerPoint presentation from a folder of source documents and a prompt. Includes a complete slide type library with branded styling |
 | [newsletter](skills/newsletter/) | Generate a monthly AI newsletter with web research, archive cross-checking, and multi-agent content discovery |
 | [newsletter-link](skills/newsletter-link/) | Quick-add a link to the must-include list for the next newsletter |
+| [document-generator](skills/document-generator/) | Programmatic generation of professional DOCX, PPTX, XLSX, and PDF files with proper styles, branding, and data visualization |
 | [notes-cleanup](skills/notes-cleanup/) | Clean up rough notes (meetings, voice memos, brainstorming) into polished, structured text |
 | [notebooklm](skills/notebooklm/) | Full programmatic access to Google NotebookLM via CLI. Create notebooks, add sources, generate podcasts, slide decks, quizzes, and more |
 | [notebooklm-pipeline](skills/notebooklm-pipeline/) | Automated NotebookLM pipeline: create notebook, add sources, then generate podcast + report + quiz + slides in parallel |
@@ -30,8 +31,27 @@ These skills extend Claude Code with specialized capabilities through `SKILL.md`
 | Skill | Description |
 |-------|-------------|
 | [deep-research](skills/deep-research/) | Comprehensive source-verified research using 4 parallel agents (gov, news, academic, industry), cross-referencing, URL verification, and confidence scoring |
+| [research-report](skills/research-report/) | Focused research report with 4-6 parallel agents, inline citations, and .docx output with source appendix |
 | [fact-check](skills/fact-check/) | Fact-check a .docx file for internal consistency, unsourced claims, citation integrity, logical coherence, plausibility, and stale references. Produces annotated Word comments and a summary report |
 | [bill-tracker](skills/bill-tracker/) | Track Tennessee education legislation from the TN Legislature website with categorized impact assessment and Excel tracking spreadsheets |
+
+### Data & Pipelines
+
+| Skill | Description |
+|-------|-------------|
+| [data-engineer](skills/data-engineer/) | Data pipeline architect for building reliable ETL workflows, data quality checks, and analytics-ready datasets |
+
+### Training & Development
+
+| Skill | Description |
+|-------|-------------|
+| [training-designer](skills/training-designer/) | Instructional design specialist for professional development, onboarding, and leadership programs using ADDIE methodology and Kirkpatrick evaluation |
+
+### Strategy & Orchestration
+
+| Skill | Description |
+|-------|-------------|
+| [nexus-strategy](skills/nexus-strategy/) | Multi-phase orchestration framework for complex initiatives requiring coordinated workstreams, quality gates, and structured handoffs |
 
 ### Productivity & Operations
 
@@ -95,8 +115,10 @@ These skills demonstrate several reusable Claude Code patterns:
 - **CLI tool integration** with `notebooklm-py` for NotebookLM automation
 - **Shared context files** for multi-task orchestration (weekly-ops)
 - **Skill-as-meta-skill** where one skill autonomously creates other skills (create-skill)
-- **Web research pipelines** with parallel WebSearch/WebFetch for source gathering and product comparison (deep-research, shopping, bill-tracker)
+- **Web research pipelines** with parallel WebSearch/WebFetch for source gathering and product comparison (deep-research, research-report, shopping, bill-tracker)
 - **Source verification** with confidence scoring and cross-referencing across multiple source categories (deep-research)
+- **Phased project orchestration** with quality gates and parallel workstreams (nexus-strategy)
+- **Domain-adapted agent personas** reframed from generic templates for specific operational contexts (data-engineer, training-designer)
 
 ## Requirements
 
