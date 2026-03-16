@@ -71,6 +71,7 @@ W14 = "http://schemas.microsoft.com/office/word/2010/wordml"
 W15 = "http://schemas.microsoft.com/office/word/2012/wordml"
 W16CID = "http://schemas.microsoft.com/office/word/2016/wordml/cid"
 RELS_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
+CT_NS = "http://schemas.openxmlformats.org/package/2006/content-types"
 
 COMMENT_AUTHOR = "Horne comment"
 COMMENT_DATE = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -83,11 +84,12 @@ def generate_para_id():
 
 The key detail: each `<w:comment>` contains an inner `<w:p>` with its own `w14:paraId`. This inner paraId is what `commentsExtended.xml` and `commentsIds.xml` reference.
 
+IMPORTANT: Use `nsmap=` in the Element constructor for namespace declarations. Do NOT use `root.set('xmlns:w', ...)` as lxml will raise `ValueError: Invalid attribute name`. Each comment paragraph MUST include a `CommentText` paragraph style and an `annotationRef` run, or Word will render comments as hashtags (#).
+
 ```python
 def build_comments_xml(comments_list):
-    root = etree.Element(f'{{{W}}}comments')
-    root.set(f'xmlns:w', W)
-    root.set(f'xmlns:w14', W14)
+    nsmap = {'w': W, 'w14': W14}
+    root = etree.Element(f'{{{W}}}comments', nsmap=nsmap)
 
     for c in comments_list:
         comment_elem = etree.SubElement(root, f'{{{W}}}comment')
@@ -100,8 +102,21 @@ def build_comments_xml(comments_list):
         inner_p.set(f'{{{W14}}}paraId', c['inner_para_id'])
         inner_p.set(f'{{{W14}}}textId', '77777777')
 
-        run = etree.SubElement(inner_p, f'{{{W}}}r')
-        t = etree.SubElement(run, f'{{{W}}}t')
+        # Paragraph style: CommentText (required for Word to render)
+        ppr = etree.SubElement(inner_p, f'{{{W}}}pPr')
+        pstyle = etree.SubElement(ppr, f'{{{W}}}pStyle')
+        pstyle.set(f'{{{W}}}val', 'CommentText')
+
+        # First run: annotationRef with CommentReference style (required)
+        ref_run = etree.SubElement(inner_p, f'{{{W}}}r')
+        ref_rpr = etree.SubElement(ref_run, f'{{{W}}}rPr')
+        ref_rstyle = etree.SubElement(ref_rpr, f'{{{W}}}rStyle')
+        ref_rstyle.set(f'{{{W}}}val', 'CommentReference')
+        etree.SubElement(ref_run, f'{{{W}}}annotationRef')
+
+        # Second run: the actual comment text
+        text_run = etree.SubElement(inner_p, f'{{{W}}}r')
+        t = etree.SubElement(text_run, f'{{{W}}}t')
         t.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
         t.text = c['text']
 
@@ -114,8 +129,8 @@ References the inner `w14:paraId` from each comment's inner `<w:p>`.
 
 ```python
 def build_comments_extended_xml(comments_list):
-    root = etree.Element(f'{{{W15}}}commentsEx')
-    root.set('xmlns:w15', W15)
+    nsmap = {'w15': W15}
+    root = etree.Element(f'{{{W15}}}commentsEx', nsmap=nsmap)
     for c in comments_list:
         ex = etree.SubElement(root, f'{{{W15}}}commentEx')
         ex.set(f'{{{W15}}}paraId', c['inner_para_id'])
@@ -129,8 +144,8 @@ Also references the inner `w14:paraId`. The `durableId` equals the `paraId`.
 
 ```python
 def build_comments_ids_xml(comments_list):
-    root = etree.Element(f'{{{W16CID}}}commentsIds')
-    root.set('xmlns:w16cid', W16CID)
+    nsmap = {'w16cid': W16CID}
+    root = etree.Element(f'{{{W16CID}}}commentsIds', nsmap=nsmap)
     for c in comments_list:
         cid_elem = etree.SubElement(root, f'{{{W16CID}}}commentId')
         cid_elem.set(f'{{{W16CID}}}paraId', c['inner_para_id'])
@@ -167,6 +182,9 @@ def inject_comment_anchors(doc_xml_bytes, para_comment_map):
         range_end.set(f'{{{W}}}id', str(comment_id))
 
         ref_run = etree.Element(f'{{{W}}}r')
+        rpr = etree.SubElement(ref_run, f'{{{W}}}rPr')
+        rstyle = etree.SubElement(rpr, f'{{{W}}}rStyle')
+        rstyle.set(f'{{{W}}}val', 'CommentReference')
         ref = etree.SubElement(ref_run, f'{{{W}}}commentReference')
         ref.set(f'{{{W}}}id', str(comment_id))
 
@@ -219,6 +237,28 @@ def ensure_comment_rels(rels_xml_bytes):
     return etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
 ```
 
+### Ensure content types in [Content_Types].xml
+
+CRITICAL: Without these Override entries, Word cannot parse the comment XML parts and will render comments as hashtags (#).
+
+```python
+COMMENT_CONTENT_TYPES = [
+    ('/word/comments.xml', 'application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml'),
+    ('/word/commentsExtended.xml', 'application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtended+xml'),
+    ('/word/commentsIds.xml', 'application/vnd.openxmlformats-officedocument.wordprocessingml.commentsIds+xml'),
+]
+
+def ensure_content_types(ct_xml_bytes):
+    root = etree.fromstring(ct_xml_bytes)
+    existing_parts = {o.get('PartName') for o in root.findall(f'{{{CT_NS}}}Override')}
+    for part_name, content_type in COMMENT_CONTENT_TYPES:
+        if part_name not in existing_parts:
+            override = etree.SubElement(root, f'{{{CT_NS}}}Override')
+            override.set('PartName', part_name)
+            override.set('ContentType', content_type)
+    return etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
+```
+
 ### Main write function
 
 ```python
@@ -250,12 +290,14 @@ def write_reviewed_docx(input_path, output_path, comments_to_add):
 
     with zipfile.ZipFile(output_path, 'r') as z:
         doc_xml_bytes = z.read('word/document.xml')
+        ct_bytes = z.read('[Content_Types].xml')
         all_names = z.namelist()
         rels_name = 'word/_rels/document.xml.rels'
         rels_bytes = z.read(rels_name) if rels_name in all_names else None
 
     modified_doc = inject_comment_anchors(doc_xml_bytes, para_comment_map)
     modified_rels = ensure_comment_rels(rels_bytes) if rels_bytes else None
+    modified_ct = ensure_content_types(ct_bytes)
 
     tmp = output_path + '.tmp'
     skip = {'word/comments.xml', 'word/commentsExtended.xml', 'word/commentsIds.xml'}
@@ -269,6 +311,8 @@ def write_reviewed_docx(input_path, output_path, comments_to_add):
                     zout.writestr(item, modified_doc)
                 elif item.filename == rels_name and modified_rels:
                     zout.writestr(item, modified_rels)
+                elif item.filename == '[Content_Types].xml':
+                    zout.writestr(item, modified_ct)
                 else:
                     zout.writestr(item, zin.read(item.filename))
 

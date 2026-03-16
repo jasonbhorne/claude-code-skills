@@ -30,112 +30,293 @@ Then insert Word comments at each finding.
 
 Use this Python approach with `python-docx` and `lxml`:
 
+Use direct zip/XML manipulation. Do NOT rely on python-docx's high-level API for comments because `DocumentPart` does not expose `comments_part` in current versions.
+
+### Required libraries
 ```python
-from docx import Document
-from docx.oxml.ns import qn
-from docx.oxml import OxmlElement
+import zipfile
+import shutil
+import os
+import random
 from lxml import etree
-from docx.opc.part import Part
-from docx.opc.packuri import PackURI
+from datetime import datetime
+```
 
-# 1. Build the comments XML container
-comments_xml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:comments xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
-            xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-            xmlns:o="urn:schemas-microsoft-com:office:office"
-            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-            xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"
-            xmlns:v="urn:schemas-microsoft-com:vml"
-            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
-            xmlns:w10="urn:schemas-microsoft-com:office:word"
-            xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-            xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml">
-</w:comments>'''
-comments_element = etree.fromstring(comments_xml.encode('utf-8'))
+### XML namespaces
+```python
+W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+W14 = "http://schemas.microsoft.com/office/word/2010/wordml"
+W15 = "http://schemas.microsoft.com/office/word/2012/wordml"
+W16CID = "http://schemas.microsoft.com/office/word/2016/wordml/cid"
+RELS_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
+CT_NS = "http://schemas.openxmlformats.org/package/2006/content-types"
 
-# 2. For each comment, add to the XML and mark the paragraph
-def add_comment_to_xml(comments_element, comment_id, author, date_str, text):
-    comment = etree.SubElement(comments_element, qn('w:comment'))
-    comment.set(qn('w:id'), str(comment_id))
-    comment.set(qn('w:author'), author)
-    comment.set(qn('w:date'), date_str)
-    p = etree.SubElement(comment, qn('w:p'))
-    r = etree.SubElement(p, qn('w:r'))
-    t = etree.SubElement(r, qn('w:t'))
-    t.text = text
-    t.set(qn('xml:space'), 'preserve')
+COMMENT_AUTHOR = "Jason Horne"
+COMMENT_DATE = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
 
-def add_comment_markers(paragraph, search_text, comment_id):
-    """Add commentRangeStart, commentRangeEnd, and commentReference to a paragraph."""
-    # Try to find search_text in individual runs first
-    found = False
-    for run in paragraph.runs:
-        if search_text.lower() in (run.text or "").lower():
-            comment_start = OxmlElement('w:commentRangeStart')
-            comment_start.set(qn('w:id'), str(comment_id))
-            run.element.addprevious(comment_start)
+def generate_para_id():
+    return format(random.randint(0, 0xFFFFFFFF), '08X').upper()
+```
 
-            comment_end = OxmlElement('w:commentRangeEnd')
-            comment_end.set(qn('w:id'), str(comment_id))
-            run.element.addnext(comment_end)
+### Build comments.xml
 
-            ref_run = OxmlElement('w:r')
-            ref_rpr = OxmlElement('w:rPr')
-            ref_style = OxmlElement('w:rStyle')
-            ref_style.set(qn('w:val'), 'CommentReference')
-            ref_rpr.append(ref_style)
-            ref_run.append(ref_rpr)
-            comment_ref = OxmlElement('w:commentReference')
-            comment_ref.set(qn('w:id'), str(comment_id))
-            ref_run.append(comment_ref)
-            comment_end.addnext(ref_run)
-            found = True
-            break
+IMPORTANT: Use `nsmap=` in the Element constructor for namespace declarations. Do NOT use `root.set('xmlns:w', ...)` as lxml will raise `ValueError: Invalid attribute name`. Each comment paragraph MUST include a `CommentText` paragraph style and an `annotationRef` run, or Word will render comments as hashtags (#).
 
-    if not found:
-        # Fallback: mark the whole paragraph
-        p_element = paragraph._element
-        comment_start = OxmlElement('w:commentRangeStart')
-        comment_start.set(qn('w:id'), str(comment_id))
-        p_element.insert(0, comment_start)
+```python
+def build_comments_xml(comments_list):
+    nsmap = {'w': W, 'w14': W14}
+    root = etree.Element(f'{{{W}}}comments', nsmap=nsmap)
 
-        comment_end = OxmlElement('w:commentRangeEnd')
-        comment_end.set(qn('w:id'), str(comment_id))
-        p_element.append(comment_end)
+    for c in comments_list:
+        comment_elem = etree.SubElement(root, f'{{{W}}}comment')
+        comment_elem.set(f'{{{W}}}id', str(c['id']))
+        comment_elem.set(f'{{{W}}}author', c['author'])
+        comment_elem.set(f'{{{W}}}date', c['date'])
 
-        ref_run = OxmlElement('w:r')
-        ref_rpr = OxmlElement('w:rPr')
-        ref_style = OxmlElement('w:rStyle')
-        ref_style.set(qn('w:val'), 'CommentReference')
-        ref_rpr.append(ref_style)
-        ref_run.append(ref_rpr)
-        comment_ref = OxmlElement('w:commentReference')
-        comment_ref.set(qn('w:id'), str(comment_id))
-        ref_run.append(comment_ref)
-        p_element.append(ref_run)
+        inner_p = etree.SubElement(comment_elem, f'{{{W}}}p')
+        inner_p.set(f'{{{W14}}}paraId', c['inner_para_id'])
+        inner_p.set(f'{{{W14}}}textId', '77777777')
 
-# 3. After all comments are built, attach the comments part to the document
-def attach_comments_part(doc, comments_element):
-    comments_bytes = etree.tostring(comments_element, xml_declaration=True, encoding='UTF-8', standalone=True)
-    doc_part = doc.part
+        # Paragraph style: CommentText (required for Word to render)
+        ppr = etree.SubElement(inner_p, f'{{{W}}}pPr')
+        pstyle = etree.SubElement(ppr, f'{{{W}}}pStyle')
+        pstyle.set(f'{{{W}}}val', 'CommentText')
 
-    # Check for existing comments part
-    existing = None
-    for rel in doc_part.rels.values():
-        if 'comments' in rel.reltype:
-            existing = rel
-            break
+        # First run: annotationRef with CommentReference style (required)
+        ref_run = etree.SubElement(inner_p, f'{{{W}}}r')
+        ref_rpr = etree.SubElement(ref_run, f'{{{W}}}rPr')
+        ref_rstyle = etree.SubElement(ref_rpr, f'{{{W}}}rStyle')
+        ref_rstyle.set(f'{{{W}}}val', 'CommentReference')
+        etree.SubElement(ref_run, f'{{{W}}}annotationRef')
 
-    if existing:
-        existing.target_part._blob = comments_bytes
-    else:
-        comments_part = Part(
-            PackURI('/word/comments.xml'),
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml',
-            comments_bytes,
-            doc_part.package
-        )
-        doc_part.relate_to(comments_part, 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments')
+        # Second run: the actual comment text
+        text_run = etree.SubElement(inner_p, f'{{{W}}}r')
+        t = etree.SubElement(text_run, f'{{{W}}}t')
+        t.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
+        t.text = c['text']
+
+    return etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
+```
+
+### Build commentsExtended.xml
+
+```python
+def build_comments_extended_xml(comments_list):
+    nsmap = {'w15': W15}
+    root = etree.Element(f'{{{W15}}}commentsEx', nsmap=nsmap)
+    for c in comments_list:
+        ex = etree.SubElement(root, f'{{{W15}}}commentEx')
+        ex.set(f'{{{W15}}}paraId', c['inner_para_id'])
+        ex.set(f'{{{W15}}}done', '0')
+    return etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
+```
+
+### Build commentsIds.xml
+
+```python
+def build_comments_ids_xml(comments_list):
+    nsmap = {'w16cid': W16CID}
+    root = etree.Element(f'{{{W16CID}}}commentsIds', nsmap=nsmap)
+    for c in comments_list:
+        cid_elem = etree.SubElement(root, f'{{{W16CID}}}commentId')
+        cid_elem.set(f'{{{W16CID}}}paraId', c['inner_para_id'])
+        cid_elem.set(f'{{{W16CID}}}durableId', c['inner_para_id'])
+    return etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
+```
+
+### Inject comment anchors into document.xml
+
+```python
+def inject_comment_anchors(doc_xml_bytes, para_comment_map):
+    """
+    para_comment_map: {para_index: comment_id}
+    """
+    root = etree.fromstring(doc_xml_bytes)
+    paragraphs = root.findall(f'.//{{{W}}}p')
+
+    for para_idx, comment_id in para_comment_map.items():
+        if para_idx >= len(paragraphs):
+            continue
+        para = paragraphs[para_idx]
+
+        range_start = etree.Element(f'{{{W}}}commentRangeStart')
+        range_start.set(f'{{{W}}}id', str(comment_id))
+
+        range_end = etree.Element(f'{{{W}}}commentRangeEnd')
+        range_end.set(f'{{{W}}}id', str(comment_id))
+
+        ref_run = etree.Element(f'{{{W}}}r')
+        rpr = etree.SubElement(ref_run, f'{{{W}}}rPr')
+        rstyle = etree.SubElement(rpr, f'{{{W}}}rStyle')
+        rstyle.set(f'{{{W}}}val', 'CommentReference')
+        ref = etree.SubElement(ref_run, f'{{{W}}}commentReference')
+        ref.set(f'{{{W}}}id', str(comment_id))
+
+        ppr = para.find(f'{{{W}}}pPr')
+        insert_pos = (list(para).index(ppr) + 1) if ppr is not None else 0
+        para.insert(insert_pos, range_start)
+        para.append(range_end)
+        para.append(ref_run)
+
+    return etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
+```
+
+### Ensure comment relationships in document.xml.rels
+
+```python
+COMMENT_RELS = [
+    (
+        'http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments',
+        'comments.xml'
+    ),
+    (
+        'http://schemas.microsoft.com/office/2011/relationships/commentsExtended',
+        'commentsExtended.xml'
+    ),
+    (
+        'http://schemas.microsoft.com/office/2016/09/relationships/commentsIds',
+        'commentsIds.xml'
+    ),
+]
+
+def ensure_comment_rels(rels_xml_bytes):
+    root = etree.fromstring(rels_xml_bytes)
+    existing_targets = {r.get('Target') for r in root.findall(f'{{{RELS_NS}}}Relationship')}
+    existing_ids = {r.get('Id') for r in root.findall(f'{{{RELS_NS}}}Relationship')}
+
+    for rel_type, target in COMMENT_RELS:
+        if target not in existing_targets:
+            base_id = 'rIdComment' + target.split('.')[0].split('comments')[-1].capitalize()
+            rid = base_id
+            n = 2
+            while rid in existing_ids:
+                rid = base_id + str(n)
+                n += 1
+            rel = etree.SubElement(root, f'{{{RELS_NS}}}Relationship')
+            rel.set('Id', rid)
+            rel.set('Type', rel_type)
+            rel.set('Target', target)
+            existing_ids.add(rid)
+
+    return etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
+```
+
+### Ensure content types in [Content_Types].xml
+
+CRITICAL: Without these Override entries, Word cannot parse the comment XML parts and will render comments as hashtags (#).
+
+```python
+COMMENT_CONTENT_TYPES = [
+    ('/word/comments.xml', 'application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml'),
+    ('/word/commentsExtended.xml', 'application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtended+xml'),
+    ('/word/commentsIds.xml', 'application/vnd.openxmlformats-officedocument.wordprocessingml.commentsIds+xml'),
+]
+
+def ensure_content_types(ct_xml_bytes):
+    root = etree.fromstring(ct_xml_bytes)
+    existing_parts = {o.get('PartName') for o in root.findall(f'{{{CT_NS}}}Override')}
+    for part_name, content_type in COMMENT_CONTENT_TYPES:
+        if part_name not in existing_parts:
+            override = etree.SubElement(root, f'{{{CT_NS}}}Override')
+            override.set('PartName', part_name)
+            override.set('ContentType', content_type)
+    return etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
+```
+
+### Main write function
+
+```python
+def write_reviewed_docx(input_path, output_path, comments_to_add):
+    """
+    comments_to_add: list of dicts:
+        para_index (int): index into all <w:p> elements in document.xml
+        text (str): comment text
+        category (str): for terminal summary
+    """
+    shutil.copy2(input_path, output_path)
+
+    comments_list = []
+    para_comment_map = {}
+    for i, item in enumerate(comments_to_add):
+        inner_para_id = generate_para_id()
+        comments_list.append({
+            'id': i,
+            'author': COMMENT_AUTHOR,
+            'date': COMMENT_DATE,
+            'text': item['text'],
+            'inner_para_id': inner_para_id,
+        })
+        para_comment_map[item['para_index']] = i
+
+    comments_xml = build_comments_xml(comments_list)
+    comments_ext_xml = build_comments_extended_xml(comments_list)
+    comments_ids_xml = build_comments_ids_xml(comments_list)
+
+    with zipfile.ZipFile(output_path, 'r') as z:
+        doc_xml_bytes = z.read('word/document.xml')
+        ct_bytes = z.read('[Content_Types].xml')
+        all_names = z.namelist()
+        rels_name = 'word/_rels/document.xml.rels'
+        rels_bytes = z.read(rels_name) if rels_name in all_names else None
+
+    modified_doc = inject_comment_anchors(doc_xml_bytes, para_comment_map)
+    modified_rels = ensure_comment_rels(rels_bytes) if rels_bytes else None
+    modified_ct = ensure_content_types(ct_bytes)
+
+    tmp = output_path + '.tmp'
+    skip = {'word/comments.xml', 'word/commentsExtended.xml', 'word/commentsIds.xml'}
+
+    with zipfile.ZipFile(output_path, 'r') as zin:
+        with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as zout:
+            for item in zin.infolist():
+                if item.filename in skip:
+                    continue
+                elif item.filename == 'word/document.xml':
+                    zout.writestr(item, modified_doc)
+                elif item.filename == rels_name and modified_rels:
+                    zout.writestr(item, modified_rels)
+                elif item.filename == '[Content_Types].xml':
+                    zout.writestr(item, modified_ct)
+                else:
+                    zout.writestr(item, zin.read(item.filename))
+
+            zout.writestr('word/comments.xml', comments_xml)
+            zout.writestr('word/commentsExtended.xml', comments_ext_xml)
+            zout.writestr('word/commentsIds.xml', comments_ids_xml)
+
+    os.replace(tmp, output_path)
+```
+
+### Reading paragraphs for analysis
+
+Use lxml directly for reading to get accurate paragraph indices for comment anchoring:
+
+```python
+def get_paragraphs_with_lxml_index(docx_path):
+    """
+    Returns list of dicts with lxml_index, style, text.
+    Counts all <w:p> in document.xml body to get correct lxml index.
+    """
+    with zipfile.ZipFile(docx_path) as z:
+        doc_xml = z.read('word/document.xml')
+    root = etree.fromstring(doc_xml)
+    all_paras = root.findall(f'.//{{{W}}}p')
+
+    result = []
+    for i, p in enumerate(all_paras):
+        texts = [t.text for t in p.iter(f'{{{W}}}t') if t.text]
+        text = ''.join(texts).strip()
+
+        ppr = p.find(f'{{{W}}}pPr')
+        style = ''
+        if ppr is not None:
+            pstyle = ppr.find(f'{{{W}}}pStyle')
+            if pstyle is not None:
+                style = pstyle.get(f'{{{W}}}val', '')
+
+        result.append({'lxml_index': i, 'style': style, 'text': text})
+
+    return result
 ```
 
 ## Agent Teams Strategy (Full Review Mode)
@@ -158,13 +339,12 @@ For short documents or user-provided corrections mode, run as a single agent wit
 ## Steps
 
 1. **Locate the file** — resolve the path, check it exists and is a valid .docx
-2. **Read the document** — load with python-docx, scan all paragraphs and tables
+2. **Read the document** — use `get_paragraphs_with_lxml_index()` to get text and lxml indices
 3. **Search for each error** — find the paragraph index containing each search term (case-insensitive)
-4. **Build comments** — for each finding, create the comment XML and add markers to the paragraph
-5. **Attach the comments part** to the document package
-6. **Save the file** (overwrite in place unless user requests a copy)
-7. **Open in Word** using `open -a "Microsoft Word" "<path>"`
-8. **Report** — tell the user how many comments were added and summarize the categories
+4. **Build the comment list** — each comment has `para_index`, `text`, and `category`
+5. **Write the reviewed .docx** using `write_reviewed_docx()`
+6. **Open in Word** using `open -a "Microsoft Word" "<path>"`
+7. **Report** — tell the user how many comments were added and summarize the categories
 
 ## Rules
 
@@ -175,4 +355,4 @@ For short documents or user-provided corrections mode, run as a single agent wit
 - Group comments by category in the summary (typos, citations, template artifacts, etc.)
 - For dissertation/proposal reviews, flag tense consistency issues (proposal = future tense, dissertation = past tense)
 - Do NOT make direct edits to the text — only insert comments so the author can make their own corrections
-- Ensure pdf2docx and python-docx are installed before running (`pip3 install pdf2docx python-docx` if needed)
+- Ensure lxml and python-docx are installed before running (`pip3 install lxml python-docx` if needed)

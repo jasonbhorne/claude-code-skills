@@ -322,6 +322,12 @@ Print the report contents to the user.
    - Test results summary
    - Any assumptions made
 
+## Step 9: Log to Obsidian
+
+After successful creation, use the Obsidian MCP tools to:
+1. Update `Skills/Skill Inventory.md` to add the new skill in the appropriate category
+2. Create a session log at `Sessions/YYYY-MM-DD - Skill: <Name>.md` documenting what was built, test results, and any assumptions made
+
 ## Rules
 
 - Do NOT present the skill to the user until ALL validations pass (or 3 iterations exhausted with clear failure report)
@@ -335,3 +341,5 @@ Print the report contents to the user.
 - If the builder creates Python code, it must be fully self-contained (no custom module imports)
 - The tester must create tests that can actually execute the Python portions of the skill in isolation
 - Test iteration loop: max 3 attempts, then report honestly about remaining failures
+- Save the test suite to `~/.claude/skills/<name>/tests/test_<name>.py` (not just /tmp) so tests can be re-run later with `pytest ~/.claude/skills/<name>/tests/ -v`
+- Non-destructive: NEVER overwrite user-edited files. Always write new files.

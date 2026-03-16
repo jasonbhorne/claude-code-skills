@@ -85,34 +85,68 @@ from docx.oxml import OxmlElement
 from lxml import etree
 from docx.opc.part import Part
 from docx.opc.packuri import PackURI
+import zipfile, shutil, os, copy
 
-# Build comments XML container
-comments_xml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:comments xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
-            xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-            xmlns:o="urn:schemas-microsoft-com:office:office"
-            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-            xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"
-            xmlns:v="urn:schemas-microsoft-com:vml"
-            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
-            xmlns:w10="urn:schemas-microsoft-com:office:word"
-            xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-            xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml">
-</w:comments>'''
-comments_element = etree.fromstring(comments_xml.encode('utf-8'))
+# XML namespace constants
+W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+W14 = "http://schemas.microsoft.com/office/word/2010/wordml"
+W15 = "http://schemas.microsoft.com/office/word/2012/wordml"
+CT_NS = "http://schemas.openxmlformats.org/package/2006/content-types"
 
-def add_comment_to_xml(comments_element, comment_id, author, date_str, text):
-    comment = etree.SubElement(comments_element, qn('w:comment'))
-    comment.set(qn('w:id'), str(comment_id))
-    comment.set(qn('w:author'), author)
-    comment.set(qn('w:date'), date_str)
-    p = etree.SubElement(comment, qn('w:p'))
-    r = etree.SubElement(p, qn('w:r'))
-    t = etree.SubElement(r, qn('w:t'))
-    t.text = text
-    t.set(qn('xml:space'), 'preserve')
+# ── build_comments_xml ──────────────────────────────────────────────
+def build_comments_xml(comments_data):
+    """Build word/comments.xml from a list of dicts:
+       [{id, author, date, text}, ...]
+    """
+    root = etree.Element(f'{{{W}}}comments', nsmap={'w': W, 'w14': W14})
+    for c in comments_data:
+        comment = etree.SubElement(root, f'{{{W}}}comment')
+        comment.set(f'{{{W}}}id', str(c['id']))
+        comment.set(f'{{{W}}}author', c['author'])
+        comment.set(f'{{{W}}}date', c['date'])
+        comment.set(f'{{{W}}}initials', ''.join(w[0] for w in c['author'].split()))
+        p = etree.SubElement(comment, f'{{{W}}}p')
+        # paragraph style
+        ppr = etree.SubElement(p, f'{{{W}}}pPr')
+        pstyle = etree.SubElement(ppr, f'{{{W}}}pStyle')
+        pstyle.set(f'{{{W}}}val', 'CommentText')
+        # annotationRef run (first)
+        ar_run = etree.SubElement(p, f'{{{W}}}r')
+        ar_rpr = etree.SubElement(ar_run, f'{{{W}}}rPr')
+        ar_rstyle = etree.SubElement(ar_rpr, f'{{{W}}}rStyle')
+        ar_rstyle.set(f'{{{W}}}val', 'CommentReference')
+        etree.SubElement(ar_run, f'{{{W}}}annotationRef')
+        # text run
+        r = etree.SubElement(p, f'{{{W}}}r')
+        t = etree.SubElement(r, f'{{{W}}}t')
+        t.text = c['text']
+        t.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
+    return etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
 
-def add_comment_markers(paragraph, search_text, comment_id):
+# ── build_comments_extended_xml ─────────────────────────────────────
+def build_comments_extended_xml(comments_data):
+    root = etree.Element(f'{{{W15}}}commentsEx', nsmap={'w15': W15})
+    for c in comments_data:
+        ce = etree.SubElement(root, f'{{{W15}}}commentEx')
+        ce.set(f'{{{W15}}}paraId', f'{c["id"]:08X}')
+        ce.set(f'{{{W15}}}done', '0')
+    return etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
+
+# ── build_comments_ids_xml ──────────────────────────────────────────
+def build_comments_ids_xml(comments_data):
+    root = etree.Element(f'{{{W16CID}}}commentsIds',
+                         nsmap={'w16cid': W16CID}) if False else \
+           etree.Element(f'{{{W15}}}commentsIds', nsmap={'w15': W15})
+    # Simplified: use w15 namespace for IDs
+    for c in comments_data:
+        ci = etree.SubElement(root, f'{{{W15}}}commentId')
+        ci.set(f'{{{W15}}}paraId', f'{c["id"]:08X}')
+        ci.set(f'{{{W15}}}durableId', str(0x60000000 + c['id']))
+    return etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
+
+# ── inject_comment_anchors ──────────────────────────────────────────
+def inject_comment_anchors(paragraph, search_text, comment_id):
+    """Insert commentRangeStart/End + commentReference into a paragraph."""
     found = False
     for run in paragraph.runs:
         if search_text.lower() in (run.text or "").lower():
@@ -123,11 +157,9 @@ def add_comment_markers(paragraph, search_text, comment_id):
             comment_end.set(qn('w:id'), str(comment_id))
             run.element.addnext(comment_end)
             ref_run = OxmlElement('w:r')
-            ref_rpr = OxmlElement('w:rPr')
-            ref_style = OxmlElement('w:rStyle')
-            ref_style.set(qn('w:val'), 'CommentReference')
-            ref_rpr.append(ref_style)
-            ref_run.append(ref_rpr)
+            rpr = etree.SubElement(ref_run, f'{{{W}}}rPr')
+            rstyle = etree.SubElement(rpr, f'{{{W}}}rStyle')
+            rstyle.set(f'{{{W}}}val', 'CommentReference')
             comment_ref = OxmlElement('w:commentReference')
             comment_ref.set(qn('w:id'), str(comment_id))
             ref_run.append(comment_ref)
@@ -143,34 +175,60 @@ def add_comment_markers(paragraph, search_text, comment_id):
         comment_end.set(qn('w:id'), str(comment_id))
         p_element.append(comment_end)
         ref_run = OxmlElement('w:r')
-        ref_rpr = OxmlElement('w:rPr')
-        ref_style = OxmlElement('w:rStyle')
-        ref_style.set(qn('w:val'), 'CommentReference')
-        ref_rpr.append(ref_style)
-        ref_run.append(ref_rpr)
+        rpr = etree.SubElement(ref_run, f'{{{W}}}rPr')
+        rstyle = etree.SubElement(rpr, f'{{{W}}}rStyle')
+        rstyle.set(f'{{{W}}}val', 'CommentReference')
         comment_ref = OxmlElement('w:commentReference')
         comment_ref.set(qn('w:id'), str(comment_id))
         ref_run.append(comment_ref)
         p_element.append(ref_run)
 
-def attach_comments_part(doc, comments_element):
-    comments_bytes = etree.tostring(comments_element, xml_declaration=True, encoding='UTF-8', standalone=True)
-    doc_part = doc.part
-    existing = None
-    for rel in doc_part.rels.values():
-        if 'comments' in rel.reltype:
-            existing = rel
-            break
-    if existing:
-        existing.target_part._blob = comments_bytes
-    else:
-        comments_part = Part(
-            PackURI('/word/comments.xml'),
+# ── ensure_content_types ────────────────────────────────────────────
+def ensure_content_types(ct_xml_bytes):
+    """Add Override entries for comments parts to [Content_Types].xml."""
+    root = etree.fromstring(ct_xml_bytes)
+    overrides = {
+        '/word/comments.xml':
             'application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml',
-            comments_bytes,
-            doc_part.package
-        )
-        doc_part.relate_to(comments_part, 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments')
+        '/word/commentsExtended.xml':
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtended+xml',
+        '/word/commentsIds.xml':
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.commentsIds+xml',
+    }
+    existing = {el.get('PartName') for el in root.findall(f'{{{CT_NS}}}Override')}
+    for part_name, content_type in overrides.items():
+        if part_name not in existing:
+            ov = etree.SubElement(root, f'{{{CT_NS}}}Override')
+            ov.set('PartName', part_name)
+            ov.set('ContentType', content_type)
+    return etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
+
+# ── write_reviewed_docx ─────────────────────────────────────────────
+def write_reviewed_docx(doc, src_path, out_path, comments_data):
+    """Save the doc with proper comments, commentsExtended, commentsIds,
+       and patched [Content_Types].xml so Word renders comments natively."""
+    # 1. Save doc to a temp file (gets document.xml + rels right)
+    tmp_path = out_path + '.tmp.docx'
+    doc.save(tmp_path)
+
+    # 2. Build the three comment XML blobs
+    comments_bytes = build_comments_xml(comments_data)
+    extended_bytes = build_comments_extended_xml(comments_data)
+    ids_bytes      = build_comments_ids_xml(comments_data)
+
+    # 3. Rewrite the zip, injecting comment parts + patched content types
+    with zipfile.ZipFile(tmp_path, 'r') as zin, \
+         zipfile.ZipFile(out_path, 'w', zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            if item.filename == '[Content_Types].xml':
+                data = ensure_content_types(data)
+            zout.writestr(item, data)
+        zout.writestr('word/comments.xml', comments_bytes)
+        zout.writestr('word/commentsExtended.xml', extended_bytes)
+        zout.writestr('word/commentsIds.xml', ids_bytes)
+
+    os.remove(tmp_path)
 ```
 
 ## Steps

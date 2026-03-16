@@ -279,6 +279,14 @@ Create the `~/Documents/Weekly Briefings/` directory if it doesn't exist.
    open ~/Documents/Weekly\ Briefings/Weekly\ Briefing\ -\ YYYY-MM-DD.docx
    ```
 
+## Phase 4b: Log to Obsidian
+
+Use the Obsidian MCP tools to create a session log at `Sessions/YYYY-MM-DD - Weekly Ops.md` with:
+- Frontmatter: `type: session`, `summary: Weekly ops run`, `tags: [session, weekly-ops]`
+- Tasks run and results
+- Any errors or issues
+- Link to the briefing document path
+
 ## Phase 5: Summary Output
 
 Print a concise run summary:
