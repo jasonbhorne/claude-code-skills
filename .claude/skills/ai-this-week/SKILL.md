@@ -45,13 +45,19 @@ Use the Obsidian MCP tools to search for session notes dated within the week ran
 - `search_notes` for sessions in the date range
 - `read_note` on each matching session to extract: task summary, tools used, outputs created
 
-**2c. Query NotebookLM API**
+**2c. Scan for media companion reports**
+Search `~/Documents/Research/` for companion guide .docx files dated within the week range:
+- Filename pattern: files containing "Companion Guide" in the name, with a date prefix matching the week (e.g., `2026-03-18 DTF St. Louis Companion Guide.docx`)
+- Also check Obsidian session logs tagged `media-companion` for metadata (title, media type, spoiler tier, quick take, recommendations)
+- For each report found, extract: title, media type (book/show/movie), a condensed no-spoiler quick take (2-3 sentences), and up to 3-4 recommendation titles
+
+**2d. Query NotebookLM API**
 Run `notebooklm list --json` to get all notebooks with creation dates. Filter to notebooks created within the week range. For each matching notebook:
 - Note the title and creation date
 - Check if this notebook was already captured in an Obsidian session log (to avoid duplicates). If a Claude Code session created the notebook, it's already covered. Tag it with the NotebookLM badge only if it was direct browser usage or if the primary value was the NotebookLM interaction (e.g., podcast generation, interactive Q&A).
 - Categorize based on the notebook title
 
-**2d. Combine and categorize**
+**2e. Combine and categorize**
 Group all AI usage into categories:
 - **District Operations:** HR, finance, enrollment, data analysis, board prep, compliance
 - **Teaching & Academic:** Course materials, dissertation reviews, paper grading, student feedback
@@ -59,6 +65,7 @@ Group all AI usage into categories:
 - **Website & Social:** Site reviews, blog publishing, SEO, analytics
 - **Code & Automation:** Skills, scripts, pipelines, GitHub
 - **Personal:** Health tracking, shopping, home projects, fantasy football
+- **What I'm Into:** Media companion guides generated this week (books, shows, movies). This section renders differently from other categories (see HTML structure below). Only include if media companion reports were found in step 2c.
 
 For each item, capture:
 - What was done (1-2 sentences max)
@@ -76,6 +83,7 @@ For each item, capture:
 - Image generation/visualization: ~30m-1h
 - Bug fixes/debugging: ~2-4h
 - Blog posts: ~2-3h
+- Media companion guides: ~4-6h per guide
 Total the estimates and display in the stats footer.
 
 ### Step 3: Generate HTML
@@ -110,6 +118,16 @@ Produce a self-contained HTML block styled for Squarespace. The design should be
     .ai-week .stats span { font-weight: 600; color: #1a1a1a; }
     .ai-week .stats .time-total { color: #2e7d32; font-weight: 700; }
     .ai-week .time-saved { font-size: 0.75em; color: #2e7d32; font-weight: 600; margin-left: auto; white-space: nowrap; flex-shrink: 0; }
+    .ai-week .media-card { padding: 14px 0; border-bottom: 1px solid #f0f0f0; }
+    .ai-week .media-card:last-child { border-bottom: none; }
+    .ai-week .media-title { font-size: 1em; font-weight: 600; color: #1a1a1a; }
+    .ai-week .media-type { display: inline-block; font-size: 0.7em; font-weight: 600; padding: 2px 8px; border-radius: 12px; margin-left: 8px; }
+    .ai-week .media-type.book { background: #fff3cd; color: #856404; }
+    .ai-week .media-type.show { background: #d1ecf1; color: #0c5460; }
+    .ai-week .media-type.movie { background: #f8d7da; color: #721c24; }
+    .ai-week .media-take { font-size: 0.88em; color: #555; line-height: 1.5; margin: 6px 0; }
+    .ai-week .media-recs { font-size: 0.8em; color: #888; }
+    .ai-week .media-recs strong { color: #666; font-weight: 600; }
   </style>
 
   <div class="week-date">Week of {start_date} - {end_date}, {year}</div>
@@ -129,12 +147,41 @@ Produce a self-contained HTML block styled for Squarespace. The design should be
 
   <!-- Repeat for each category with items -->
 
+  <!-- "What I'm Into" section (only if media companion reports exist for the week) -->
+  <!-- This section appears LAST, just before the stats footer -->
+  <h2>What I'm Into</h2>
+  <div>
+    <div class="media-card">
+      <div>
+        <span class="media-title">{Title}</span>
+        <span class="media-type show">TV Show</span>
+        <!-- Use class "book" for books, "show" for TV, "movie" for movies -->
+        <!-- Label text: "Book", "TV Show", or "Movie" -->
+      </div>
+      <div class="media-take">{Condensed no-spoiler take, 2-3 sentences max}</div>
+      <div class="media-recs"><strong>If you liked this:</strong> {Rec 1}, {Rec 2}, {Rec 3}</div>
+    </div>
+    <!-- Repeat for each media companion report found -->
+  </div>
+
   <!-- Summary stats at bottom -->
   <div class="stats">
     <span>{total_tasks}</span> tasks across <span>{tool_count}</span> AI tools
+    <!-- When media items are present, add this line: -->
+    <br>Plus <span>{N}</span> media companion guide(s) generated this week
   </div>
 </div>
 ```
+
+#### "What I'm Into" Content Rules
+- The quick take MUST be rewritten as no-spoiler regardless of the original report's spoiler tier
+- Keep it to 2-3 sentences: what it is, whether it's worth watching/reading, one interesting detail
+- No plot details whatsoever
+- Recommendations condensed to title-only (no rationales), comma-separated, max 3-4 items
+- Tone matches Jason's blog voice: direct, opinionated, specific
+- Sanitize titles for a public school official's blog: when a title could cause confusion or read poorly out of context, prefer a descriptive genre title instead (e.g., "HBO Murder Mystery Mini-Series" not "DTF St. Louis"). Flag anything ambiguous for Jason to review before publishing
+- Media type badge: use `.book` for books, `.show` for TV shows, `.movie` for movies
+- If no media companion reports exist for the week, omit the entire "What I'm Into" section AND the companion guide line in the stats footer
 
 #### Tool Badge Classes
 - Claude Code / Claude: `.claude`
