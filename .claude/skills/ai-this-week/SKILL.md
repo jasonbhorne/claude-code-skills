@@ -45,20 +45,13 @@ Use the Obsidian MCP tools to search for session notes dated within the week ran
 - `search_notes` for sessions in the date range
 - `read_note` on each matching session to extract: task summary, tools used, outputs created
 
-**2c. Pull Audible listening data (books)**
-- Run: `/opt/anaconda3/bin/python3 ~/Scripts/audible_listening.py --top 5`
-- This returns JSON with all books that have any listening progress, sorted by percent_complete descending
-- The `is_finished` flag is unreliable (Audible auto-restarts some titles), so all books with progress are included. Use editorial judgement to pick the top 2-3 books that look actively in-progress for the "What I'm Reading" section
-- Credentials stored at `~/.config/audible/credentials.json` (auto-refreshes tokens)
-- If the script fails or credentials are expired, skip Audible data and note the issue
-
-**2d. Query NotebookLM API**
+**2c. Query NotebookLM API**
 Run `notebooklm list --json` to get all notebooks with creation dates. Filter to notebooks created within the week range. For each matching notebook:
 - Note the title and creation date
 - Check if this notebook was already captured in an Obsidian session log (to avoid duplicates). If a Claude Code session created the notebook, it's already covered. Tag it with the NotebookLM badge only if it was direct browser usage or if the primary value was the NotebookLM interaction (e.g., podcast generation, interactive Q&A).
 - Categorize based on the notebook title
 
-**2e. Combine and categorize**
+**2d. Combine and categorize**
 Group all AI usage into categories:
 - **District Operations:** HR, finance, enrollment, data analysis, board prep, compliance
 - **Teaching & Academic:** Course materials, dissertation reviews, paper grading, student feedback
@@ -66,8 +59,6 @@ Group all AI usage into categories:
 - **Website & Social:** Site reviews, blog publishing, SEO, analytics
 - **Code & Automation:** Skills, scripts, pipelines, GitHub
 - **Personal:** Health tracking, shopping, home projects, fantasy football
-- **What I'm Reading:** Books from Audible listening data (step 2c). Always included if Audible data is available. Renders differently from other categories (see HTML structure below).
-
 For each item, capture:
 - What was done (1-2 sentences max)
 - Which AI tool(s) were used (Claude Code, ChatGPT, Gemini, NotebookLM, MagicSchool, etc.)
@@ -118,12 +109,6 @@ Produce a self-contained HTML block styled for Squarespace. The design should be
     .ai-week .stats span { font-weight: 600; color: #1a1a1a; }
     .ai-week .stats .time-total { color: #2e7d32; font-weight: 700; }
     .ai-week .time-saved { font-size: 0.75em; color: #2e7d32; font-weight: 600; margin-left: auto; white-space: nowrap; flex-shrink: 0; }
-    .ai-week .media-card { padding: 14px 0; border-bottom: 1px solid #f0f0f0; }
-    .ai-week .media-card:last-child { border-bottom: none; }
-    .ai-week .media-title { font-size: 1em; font-weight: 600; color: #1a1a1a; }
-    .ai-week .media-type { display: inline-block; font-size: 0.7em; font-weight: 600; padding: 2px 8px; border-radius: 12px; margin-left: 8px; }
-    .ai-week .media-type.book { background: #fff3cd; color: #856404; }
-    .ai-week .media-take { font-size: 0.88em; color: #555; line-height: 1.5; margin: 6px 0; }
   </style>
 
   <div class="week-date">Week of {start_date} - {end_date}, {year}</div>
@@ -143,33 +128,12 @@ Produce a self-contained HTML block styled for Squarespace. The design should be
 
   <!-- Repeat for each category with items -->
 
-  <!-- "What I'm Reading" section (from Audible data, always included if available) -->
-  <!-- Appears last, just before the stats footer -->
-  <h2>What I'm Reading</h2>
-  <div>
-    <div class="media-card">
-      <div>
-        <span class="media-title">{Book Title}</span>
-        <span class="media-type book">Book</span>
-      </div>
-      <div class="media-take">{Brief take on the book, 1-2 sentences. What it's about, whether it's good.}</div>
-    </div>
-    <!-- Repeat for top 2-3 in-progress books from Audible -->
-  </div>
-
   <!-- Summary stats at bottom -->
   <div class="stats">
     <span>{total_tasks}</span> tasks across <span>{tool_count}</span> AI tools
   </div>
 </div>
 ```
-
-#### "What I'm Reading" Content Rules
-- Always included when Audible data is available (not date-filtered, pulls full library)
-- Pick the top 2-3 books that look actively in-progress based on percent_complete and editorial judgement
-- Brief take per book: 1-2 sentences, what it's about and whether it's good
-- Tone matches Jason's blog voice: direct, opinionated, specific
-- Omit this section only if the Audible script fails or no books have progress
 
 #### Tool Badge Classes
 - Claude Code / Claude: `.claude`
