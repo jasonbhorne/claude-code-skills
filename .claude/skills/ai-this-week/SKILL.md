@@ -45,14 +45,7 @@ Use the Obsidian MCP tools to search for session notes dated within the week ran
 - `search_notes` for sessions in the date range
 - `read_note` on each matching session to extract: task summary, tools used, outputs created
 
-**2c. Scan for media companion reports (shows/movies)**
-- Search `~/Documents/Research/` for companion guide .docx files dated within the week range
-- Filename pattern: files containing "Companion Guide" in the name, with a date prefix matching the week (e.g., `2026-03-18 DTF St. Louis Companion Guide.docx`)
-- Also check Obsidian session logs tagged `media-companion` for metadata (title, media type, spoiler tier, quick take, recommendations)
-- For each report found, extract: title, media type (show/movie), a condensed no-spoiler quick take (2-3 sentences), and up to 3-4 recommendation titles
-- Book companion guides are NOT included here; books come from Audible data in step 2c2
-
-**2c2. Pull Audible listening data (books)**
+**2c. Pull Audible listening data (books)**
 - Run: `/opt/anaconda3/bin/python3 ~/Scripts/audible_listening.py --top 5`
 - This returns JSON with all books that have any listening progress, sorted by percent_complete descending
 - The `is_finished` flag is unreliable (Audible auto-restarts some titles), so all books with progress are included. Use editorial judgement to pick the top 2-3 books that look actively in-progress for the "What I'm Reading" section
@@ -73,8 +66,7 @@ Group all AI usage into categories:
 - **Website & Social:** Site reviews, blog publishing, SEO, analytics
 - **Code & Automation:** Skills, scripts, pipelines, GitHub
 - **Personal:** Health tracking, shopping, home projects, fantasy football
-- **What I'm Reading:** Books from Audible listening data (step 2c2). Always included if Audible data is available. Renders differently from other categories (see HTML structure below).
-- **What I'm Into:** Shows and movies from media companion reports (step 2c). Only include if non-book media companion reports were found. Renders differently from other categories (see HTML structure below).
+- **What I'm Reading:** Books from Audible listening data (step 2c). Always included if Audible data is available. Renders differently from other categories (see HTML structure below).
 
 For each item, capture:
 - What was done (1-2 sentences max)
@@ -92,7 +84,6 @@ For each item, capture:
 - Image generation/visualization: ~30m-1h
 - Bug fixes/debugging: ~2-4h
 - Blog posts: ~2-3h
-- Media companion guides: ~4-6h per guide
 Total the estimates and display in the stats footer.
 
 ### Step 3: Generate HTML
@@ -132,11 +123,7 @@ Produce a self-contained HTML block styled for Squarespace. The design should be
     .ai-week .media-title { font-size: 1em; font-weight: 600; color: #1a1a1a; }
     .ai-week .media-type { display: inline-block; font-size: 0.7em; font-weight: 600; padding: 2px 8px; border-radius: 12px; margin-left: 8px; }
     .ai-week .media-type.book { background: #fff3cd; color: #856404; }
-    .ai-week .media-type.show { background: #d1ecf1; color: #0c5460; }
-    .ai-week .media-type.movie { background: #f8d7da; color: #721c24; }
     .ai-week .media-take { font-size: 0.88em; color: #555; line-height: 1.5; margin: 6px 0; }
-    .ai-week .media-recs { font-size: 0.8em; color: #888; }
-    .ai-week .media-recs strong { color: #666; font-weight: 600; }
   </style>
 
   <div class="week-date">Week of {start_date} - {end_date}, {year}</div>
@@ -157,7 +144,7 @@ Produce a self-contained HTML block styled for Squarespace. The design should be
   <!-- Repeat for each category with items -->
 
   <!-- "What I'm Reading" section (from Audible data, always included if available) -->
-  <!-- Appears after all AI task categories, before "What I'm Into" -->
+  <!-- Appears last, just before the stats footer -->
   <h2>What I'm Reading</h2>
   <div>
     <div class="media-card">
@@ -170,49 +157,19 @@ Produce a self-contained HTML block styled for Squarespace. The design should be
     <!-- Repeat for top 2-3 in-progress books from Audible -->
   </div>
 
-  <!-- "What I'm Into" section (only if non-book media companion reports exist) -->
-  <!-- Appears after "What I'm Reading", before the stats footer -->
-  <h2>What I'm Into</h2>
-  <div>
-    <div class="media-card">
-      <div>
-        <span class="media-title">{Title}</span>
-        <span class="media-type show">TV Show</span>
-        <!-- Use class "show" for TV, "movie" for movies -->
-      </div>
-      <div class="media-take">{Condensed no-spoiler take, 2-3 sentences max}</div>
-      <div class="media-recs"><strong>If you liked this:</strong> {Rec 1}, {Rec 2}, {Rec 3}</div>
-    </div>
-    <!-- Repeat for each show/movie media companion report found -->
-  </div>
-
   <!-- Summary stats at bottom -->
   <div class="stats">
     <span>{total_tasks}</span> tasks across <span>{tool_count}</span> AI tools
-    <!-- When media items are present, add this line: -->
-    <br>Plus <span>{N}</span> media companion guide(s) generated this week
   </div>
 </div>
 ```
 
-#### "What I'm Reading" Content Rules (Audible books)
-- Always included when Audible data is available (this is not date-filtered)
+#### "What I'm Reading" Content Rules
+- Always included when Audible data is available (not date-filtered, pulls full library)
 - Pick the top 2-3 books that look actively in-progress based on percent_complete and editorial judgement
 - Brief take per book: 1-2 sentences, what it's about and whether it's good
-- No recommendations needed for books (unlike the media section)
 - Tone matches Jason's blog voice: direct, opinionated, specific
 - Omit this section only if the Audible script fails or no books have progress
-
-#### "What I'm Into" Content Rules (shows/movies)
-- Only included when non-book media companion reports exist for the week
-- The quick take MUST be rewritten as no-spoiler regardless of the original report's spoiler tier
-- Keep it to 2-3 sentences: what it is, whether it's worth watching, one interesting detail
-- No plot details whatsoever
-- Recommendations condensed to title-only (no rationales), comma-separated, max 3-4 items
-- Tone matches Jason's blog voice: direct, opinionated, specific
-- Sanitize titles for a public school official's blog: when a title could cause confusion or read poorly out of context, prefer a descriptive genre title instead (e.g., "HBO Murder Mystery Mini-Series" not "DTF St. Louis"). Flag anything ambiguous for Jason to review before publishing
-- Media type badge: use `.show` for TV shows, `.movie` for movies
-- If no show/movie media companion reports exist for the week, omit the entire "What I'm Into" section AND the companion guide line in the stats footer
 
 #### Tool Badge Classes
 - Claude Code / Claude: `.claude`
