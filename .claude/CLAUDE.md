@@ -102,6 +102,13 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 5. Keep things simple. Prefer direct action over long explanations.
 6. For document-heavy or multi-step tasks, confirm the plan in 3-5 bullets before executing (output format, save location, key sections).
 7. Never overwrite user-edited files without creating a backup first.
+8. Triple-check all math, numbers, and financial figures. Always verify whether a number is a total, per-period, or per-unit amount before presenting conclusions. Restate the figure with its unit and sanity-check that your framing matches the data.
+
+## General Behavior
+
+When asked to look something up or research something, do the research first using available tools (web fetch, Bash curl, agents). Do not ask clarifying questions that could be answered by looking up the information yourself.
+
+For any task involving document creation, financial analysis, or communications to others: state your plan in 2-3 bullet points and wait for my confirmation before executing. For simple file operations and Obsidian logging, proceed without asking.
 
 ## Output Style
 
@@ -129,6 +136,7 @@ Say "setup omc" or run `/oh-my-claudecode:omc-setup`.
 - Always use `python-docx` for .docx files. Never save plain text with a .docx extension.
 - Always use `python-pptx` for .pptx files.
 - Default output format for reports and research is .docx unless specified otherwise.
+- After any skill that produces a research .docx (research, general-research, deep-research, domain-deep-research, research-report, media-companion), automatically run the `/publish-research` workflow to convert to PDF, upload to GitHub, and update the local mockup.
 
 ## Git
 
@@ -158,6 +166,8 @@ Puppeteer MCP is configured for browser automation (PowerSchool, Squarespace, et
 - Cloud-synced folders (OneDrive/iCloud/Google Drive) may have access limitations.
 - Validate date parsing with a sample before processing full batches.
 - Research reports: `~/Documents/Research/<topic-folder>/` as .docx.
+- When you cannot find a file, check with `find` or `mdfind` before asking the user for the path. Never ask the user for file locations without first searching ~/Desktop, ~/Documents, ~/Downloads, and the current project directory.
+- Consult `~/.claude/workspace-manifest.json` for common file locations before searching. Refresh the manifest weekly.
 
 ## Key Directories
 
@@ -166,6 +176,10 @@ See `.claude/rules/directories.md` for the full OneDrive tree.
 - `~/Documents/Research/<topic>/` — research reports as .docx
 - `~/Downloads/` — auto-sorted by `organize_downloads.sh`
 - `~/Scripts/` — automation scripts
+
+## Session Logging
+
+Always log session activity to Obsidian using the mcp__obsidian__write_note tool at the end of every session, unless explicitly told otherwise. Use generic/privacy-safe descriptions by default, never log sensitive personal details (therapy, medical, financial account numbers) without explicit permission.
 
 ## Session Startup
 
@@ -181,10 +195,12 @@ See `.claude/rules/obsidian.md` for full Obsidian vault conventions, search tips
 ## Document Generation
 
 - When generating .docx files with comments, annotations, or complex formatting, always verify Content_Types.xml entries are correct and test rendering before reporting completion.
+- When generating Word .docx files with comments, ensure Content_Types.xml includes the comments content type and proper styles. Always test-validate the XML structure before delivering.
 
 ## Domain-Specific Notes
 
 - For TN legislature bill lookups, always use leading zeros in bill numbers (e.g., HB0047, HB0793). Use the official TN General Assembly website (wapp.capitol.tn.gov) as the primary data source, not third-party sites.
+- Use 'Greeneville' (not 'Greene County') when referring to the user's district/location. Preserve leading zeros in legislative bill numbers (e.g., HB0047 not HB47).
 
 ## Excluded Paths
 
