@@ -18,11 +18,13 @@ Activate when the user says "TISA", "SWORD", "ADM", "funding estimate", "TEDS", 
 ## Key Directories
 
 ```
-~/Library/CloudStorage/OneDrive-GreenevilleCitySchools/Finance/TISA/
+<OneDrive>/Finance/TISA/
   ├── FY27 TISA Reports/           # Current year estimates and projections
-  │   ├── March Projection/        # Latest estimate files
+  │   ├── SWORD Exports/           # Archived weekly SWORD downloads (dated folders)
+  │   ├── April Projection/        # Latest projection files
+  │   ├── March Projection/
   │   ├── February Projection/
-  │   ├── GCS_FY27_TISA_Prediction_updated.xlsx   # Julie's analysis workbook
+  │   ├── GCS_FY27_TISA_Prediction_updated.xlsx   # Finance analysis workbook
   │   └── Greeneville_301_TISA_FY27_*.xlsx/pdf     # State-generated files
   ├── FY26 Outcomes/                # Prior year final outcomes and bonuses
   ├── FY25 TISA Reports/           # Historical
@@ -30,8 +32,6 @@ Activate when the user says "TISA", "SWORD", "ADM", "funding estimate", "TEDS", 
   ├── ED Research/                  # ED code analysis and peer comparisons
   ├── TEDS Reports 25-26/          # TEDS base ADM exports
   └── Reports/                      # Misc (TACIR, etc.)
-
-~/Downloads/sword/                  # SWORD exports (dated files)
 ```
 
 ## GCS District and School Codes
@@ -130,7 +130,7 @@ The March 2026 incident: EastView K-2 ADM was reported at roughly half their act
 
 ### Weekly Student-Level Downloads (for /tisa update projection)
 
-These are the files Jason downloads weekly. They land in ~/Downloads/:
+These are the student-level reports downloaded weekly from SWORD. They land in the default downloads folder:
 
 **Base ADM by Student.xlsx** (+ data.xlsx aggregated version)
 - Skip 2 rows (title + headers). Columns: School Code, School Year, District Number, (blank), District Name, School Number, School Name, EdFi ID, Legacy ID, First Name, Last Name, Grade, Entry Date, Withdraw Date, 1-9 (period columns), Report Period Average
@@ -169,7 +169,7 @@ These are the files Jason downloads weekly. They land in ~/Downloads/:
 Compare the latest SWORD export against the most recent TISA estimate.
 
 1. Find the most recent files:
-   - SWORD exports in `~/Downloads/sword/` (look for latest date)
+   - SWORD exports in the downloads folder or `SWORD Exports/` archive (look for latest date)
    - TISA estimate in the current FY folder (e.g., `FY27 TISA Reports/March Projection/`)
 2. Read both with Python (openpyxl). Use `/opt/anaconda3/bin/python3`.
 3. Compare base ADM totals: SWORD current vs estimate snapshot
@@ -214,8 +214,8 @@ Steps:
 1. Log into SWORD through the TN DOE portal
 2. Select School Year 2025-2026 and District 301
 3. For each report type (Base ADM, ED, SPED, CTE), export to xlsx
-4. Save to `~/Downloads/sword/` with naming convention: `[report type] [date].xlsx`
-   - Examples: `sword adm data 3-26-2026.xlsx`, `ed data 3-26-2026.xlsx`
+4. Save downloads. The weekly update script archives them to `SWORD Exports/YYYY-MM-DD/` automatically.
+   - Manual naming convention if needed: `sword adm data 3-26-2026.xlsx`, `ed data 3-26-2026.xlsx`
 5. If a file exports as an empty stub (header row only, no data), check:
    - School year filter is set correctly
    - District filter shows 301 - Greeneville City
@@ -325,7 +325,7 @@ TISA Calc --> final funding numbers
 - SchoolCounts: all columns (grades, total_adm, weights, CTE tiers)
 
 ### General Analysis Notes
-- **TDASC Training Materials** (April 2026): `OneDrive-GCS/Meeting Notes/TDASC/2025-2026/` contains TISA Funding Overview, Data Best Practices & Reconciliation, and Data Integrity & Troubleshooting docs
+- **TDASC Training Materials** (April 2026): TISA Funding Overview, Data Best Practices & Reconciliation, and Data Integrity & Troubleshooting docs (from TDASC Spring Conference 2026)
 - Use `/opt/anaconda3/bin/python3` with openpyxl for all xlsx reading
 - Never modify original state files -- copy to a working location if edits are needed
 - Triple-check all funding calculations. ADM x base amount = raw funding, but weights and provisions change the final number significantly
