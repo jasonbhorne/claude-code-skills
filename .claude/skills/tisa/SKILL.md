@@ -237,7 +237,7 @@ Update the TISA projection file with new period data from SWORD student-level do
 
 **Steps:**
 
-1. **Backup** the original TISA projection file (append `_BACKUP_YYYYMMDD`).
+1. **Write to a new date-stamped file** in the same folder (e.g., `..._AprProjection_MMDDYYYY.xlsx`). The script copies the most recent prior projection, then applies updates to the new dated file. Each weekly run produces its own file so year-over-year comparisons are possible. Older `_BACKUP_*` files from before April 2026 are retained as historical snapshots.
 
 2. **Cross-check data before merging** (CRITICAL):
    - Aggregate ALL periods from the new student-level data by school + grade
