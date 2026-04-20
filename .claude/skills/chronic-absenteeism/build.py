@@ -1,22 +1,20 @@
 #!/usr/bin/env python3
-"""Build chronic absenteeism deliverables from a Brandy Parton accountability snapshot.
+"""Build chronic absenteeism deliverables from a periodic accountability snapshot.
 
 Usage:
-    python build.py <source_xlsx> <as_of_YYYY-MM-DD> <day_number>
+    python build.py <source_xlsx> <as_of_YYYY-MM-DD> [day_number]
 
 Example:
     python build.py "~/Downloads/Chronic Abs Accountability Data as of March 10 2026.xlsx" 2026-03-10 122
 
-Produces:
-    ~/Documents/Chronic Absenteeism <YYYY-MM-DD>/
-        build.py (copy)
-        Chronic Absenteeism Dashboard <YYYY-MM-DD>.xlsx
-        Chronic Absenteeism Executive Summary <YYYY-MM-DD>.docx
-        Chronic Absenteeism Packet - <School>.docx (one per school)
+Produces under ~/Documents/Chronic Absenteeism <YYYY-MM-DD>/:
+    Chronic Absenteeism Dashboard <YYYY-MM-DD>.xlsx
+    Chronic Absenteeism Executive Summary <YYYY-MM-DD>.docx
+    Chronic Absenteeism Packet - <School>.docx (one per school)
 
-Also mirrors all outputs and the source to:
-    OneDrive-GCS/Data/Accountability Data/Chronic Absenteeism/
+If the CA_ONEDRIVE_DIR env var is set, also mirrors outputs and the source there.
 """
+import os
 import shutil
 import sys
 from collections import defaultdict
@@ -32,7 +30,7 @@ from docx.shared import Inches, Pt, RGBColor
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
-ONEDRIVE = Path.home() / "Library/CloudStorage/OneDrive-GreenevilleCitySchools/Data/Accountability Data/Chronic Absenteeism"
+ONEDRIVE = Path(os.environ["CA_ONEDRIVE_DIR"]).expanduser() if os.environ.get("CA_ONEDRIVE_DIR") else None
 INSTRUCTIONAL_DAYS_DEFAULT = 167
 THRESHOLD = 17  # >=17 days absent = already chronically absent
 
@@ -367,7 +365,7 @@ def build_exec_summary(rollup, students, totals, by_school, out_dir, as_of_long,
         "Share per-principal packets with each building leader this week. Ask for an attendance plan per student in the already-CA list by end of month.",
         "For trending students, confirm each building is running the standard attendance letter / parent contact / SART escalation sequence.",
         "At GHS, triage the top-20 cases with the counseling office and social worker before the next long break.",
-        "Reconcile with Brandy's ISP calculations after the next enrollment pull to make sure partial-year enrollees are not being misclassified.",
+        "Reconcile with the attendance office's ISP calculations after the next enrollment pull to make sure partial-year enrollees are not being misclassified.",
         "Re-run this snapshot in 4 weeks to measure movement.",
     ]:
         doc.add_paragraph(a, style="List Bullet")
@@ -435,7 +433,7 @@ def build_principal_packet(code, students_at_school, rollup, out_dir, as_of_long
     for b in [
         "Identify which of the already-CA students have documented medical/legal reasons versus unexcused patterns.",
         "Confirm each student on the list has received the standard attendance letter sequence and a SART referral where appropriate.",
-        "Flag any students enrolled less than 50% of the year to Brandy so ISP denominators can be verified.",
+        "Flag any students enrolled less than 50% of the year to the attendance office so ISP denominators can be verified.",
         "Build a named intervention plan for each student on the already-CA list by end of month.",
         "For trending students, a single focused parent contact often prevents the slide to CA, prioritize those closest to 17 days.",
     ]:
@@ -445,7 +443,7 @@ def build_principal_packet(code, students_at_school, rollup, out_dir, as_of_long
     for a in [
         "Brief written update on the top 5 names in your already-CA list by end of month (intervention plan, owner, next check-in date).",
         "Confirmation that SART/court referral process is current for students with 25+ absences.",
-        "Flag any data issues so we can reconcile with Brandy before the next snapshot.",
+        "Flag any data issues so we can reconcile with the attendance office before the next snapshot.",
     ]:
         doc.add_paragraph(a, style="List Bullet")
 
@@ -477,20 +475,21 @@ def main():
         by_code[s["school"]].append(s)
     packets = [build_principal_packet(code, by_code[code], rollup, out_dir, as_of_long) for code in SCHOOL_ORDER]
 
-    # Archive to OneDrive
-    ONEDRIVE.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(src, ONEDRIVE / src.name)
-    shutil.copy2(dash_path, ONEDRIVE / dash_path.name)
-    shutil.copy2(exec_path, ONEDRIVE / exec_path.name)
-    for p in packets:
-        shutil.copy2(p, ONEDRIVE / p.name)
+    if ONEDRIVE:
+        ONEDRIVE.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, ONEDRIVE / src.name)
+        shutil.copy2(dash_path, ONEDRIVE / dash_path.name)
+        shutil.copy2(exec_path, ONEDRIVE / exec_path.name)
+        for p in packets:
+            shutil.copy2(p, ONEDRIVE / p.name)
 
     print(f"Output folder: {out_dir}")
     print(f"Dashboard:     {dash_path.name}")
     print(f"Exec summary:  {exec_path.name}")
     for p in packets:
         print(f"Packet:        {p.name}")
-    print(f"OneDrive copy: {ONEDRIVE / src.name}")
+    if ONEDRIVE:
+        print(f"Archive:       {ONEDRIVE / src.name}")
     print(f"Totals:        {totals}")
 
 if __name__ == "__main__":
