@@ -1,4 +1,5 @@
 # Claude Code internals (keep CLAUDE.md and skills tracked)
+.claude/.travel-expense-config.json
 .claude/backups/
 .claude/cache/
 .claude/chrome/
@@ -83,5 +84,5 @@ OneDrive*/
 Pictures/
 Public/
 ScreenPal/
-Scripts/
+/Scripts/
 gh_config/

@@ -1,0 +1,28 @@
+{
+  "_comment": "Copy this file to ~/.claude/.travel-expense-config.json and edit with your real values. The skill scripts read from that path. Do not commit your real config — the path above is gitignored.",
+
+  "tracker_path": "~/path/to/your/Travel Expense Tracker.xlsx",
+  "form_url": "https://forms.office.com/Pages/ResponsePage.aspx?id=YOUR_FORM_ID",
+
+  "personal": {
+    "street": "Your Street Address",
+    "city": "Your City",
+    "state": "ST",
+    "zip": "00000",
+    "school": "Your School/Building Code",
+    "signature": "Your Full Name"
+  },
+
+  "rates": {
+    "mileage": 0.725,
+    "breakfast": 14,
+    "lunch": 16,
+    "dinner": 26
+  },
+
+  "eligibility": {
+    "breakfast_cutoff": "06:30",
+    "lunch_cutoff": "11:00",
+    "dinner_cutoff": "19:00"
+  }
+}
