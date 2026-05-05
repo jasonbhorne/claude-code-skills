@@ -78,7 +78,7 @@ Source-to-destination mapping:
 | `PERSONAL_ROOT/House/*paystub*` | `Pay Stubs/` |
 | `PERSONAL_ROOT/House/*Paystub*` | `Pay Stubs/` |
 | `PERSONAL_ROOT/House/$AUTHOR_NAME CHECK STUBS.pdf` | `Pay Stubs/` |
-| `PERSONAL_ROOT/House/gcsstub.pdf` | `Pay Stubs/` |
+| `PERSONAL_ROOT/House/employer-stub.pdf` | `Pay Stubs/` |
 | `PERSONAL_ROOT/Child Support.xlsx` | `Other/` |
 | `PERSONAL_ROOT/Personal - Travel.xlsx` | `Other/` |
 

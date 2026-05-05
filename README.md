@@ -63,6 +63,7 @@ These skills extend Claude Code with specialized capabilities through `SKILL.md`
 | [organize-folder](skills/organize-folder/) | Create a folder organizer script and clickable `.command` file for any directory |
 | [financial-advisor](skills/financial-advisor/) | Monthly personal financial analysis with XLSX dashboard and DOCX narrative report using 4 parallel agents |
 | [shopping](skills/shopping/) | Personal shopping assistant with size/brand memory, multi-retailer search, price comparison, and composite ranking |
+| [job-finder](skills/job-finder/) | Find and rank current job openings for a friend or candidate. Resume in, ranked openings out. 5 parallel agents (4 search + 1 link-validator), `.docx` brief + `.xlsx` tracker |
 
 ### Calendar & Scheduling
 
@@ -115,7 +116,8 @@ These skills demonstrate several reusable Claude Code patterns:
 - **CLI tool integration** with `notebooklm-py` for NotebookLM automation
 - **Shared context files** for multi-task orchestration (weekly-ops)
 - **Skill-as-meta-skill** where one skill autonomously creates other skills (create-skill)
-- **Web research pipelines** with parallel WebSearch/WebFetch for source gathering and product comparison (deep-research, research-report, shopping, bill-tracker)
+- **Web research pipelines** with parallel WebSearch/WebFetch for source gathering and product comparison (deep-research, research-report, shopping, bill-tracker, job-finder)
+- **Post-search link validation** to verify URLs and posting freshness before they reach the user (job-finder)
 - **Source verification** with confidence scoring and cross-referencing across multiple source categories (deep-research)
 - **Phased project orchestration** with quality gates and parallel workstreams (nexus-strategy)
 - **Domain-adapted agent personas** reframed from generic templates for specific operational contexts (data-engineer, training-designer)

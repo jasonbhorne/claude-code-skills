@@ -1,10 +1,10 @@
 ---
 name: blog
-description: Write a short, punchy blog post for jasonhorne.org in Jason's voice. Accepts a topic, rough notes, or a draft.
+description: Write a short, punchy blog post for $AUTHOR_WEBSITE in the user's voice. Accepts a topic, rough notes, or a draft.
 argument-hint: "<topic, rough notes, or draft text>"
 ---
 
-Write a blog post for jasonhorne.org (Squarespace) in Jason Horne's voice.
+Write a blog post for $AUTHOR_WEBSITE (Squarespace) in $AUTHOR_FULL's voice.
 
 Input: $ARGUMENTS
 
